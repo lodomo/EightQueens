@@ -31,6 +31,7 @@ SET['MAX_GEN'] = 1000
 SET['VERBOSE'] = 0
 SET['PLOT'] = False
 SET['DATA_OUTPUT'] = False
+SET['FAMILY_TREE'] = False
 
 # Data Collection
 DATA = {}
@@ -39,7 +40,8 @@ DATA['SPLIT_POINTS'] = np.zeros(8, dtype=int)
 DATA['AVG_FITNESS'] = []
 DATA['BEST_FITNESS'] = []
 DATA['GENERATIONS'] = 0
-DATA['SOLUTION'] = None 
+DATA['SOLUTION'] = None
+DATA['DELTATIME'] = 0
 
 
 def main(argv):
@@ -48,7 +50,6 @@ def main(argv):
     verbose(f"Mutation Rate: {SET['MUT_RATE']}")
     verbose(f"Max Generations: {SET['MAX_GEN']}")
     population = None
-    solution = None
     max_gen = SET['MAX_GEN']
     cur_gen = 0
 
@@ -60,6 +61,7 @@ def main(argv):
     #   5. Check for termination condition
     #   6. Create a new generation
     #   7. Repeat
+    time_start = datetime.now()
     while cur_gen < max_gen or max_gen is None:
         population = next_generation(population)
         total_fitness = sum([queen.fitness for queen in population])
@@ -90,6 +92,10 @@ def main(argv):
         DATA['GENERATIONS'] = max_gen
         print("No Solution Found")
 
+    time_end = datetime.now()
+    delta_time = time_end - time_start
+    delta_time = delta_time.total_seconds()
+    DATA['DELTATIME'] = delta_time
     plot_data()
     output_data()
     exit(0)
@@ -144,6 +150,8 @@ def help(usage_only=False):
     print("-p\tSet Population size. Default:100")
     print("-m\tSet Chance of Mutation as percentage [0-100] Default:0%")
     print("-g\tSet Max Generations. Default:Disabled")
+    print("-P\tPlot Data. Default:Disabled")
+    print("-D\tOutput Data. Default:Disabled")
     print("-v\tVerbose Mode. Default:Disabled")
     print(usage)
 
@@ -398,23 +406,28 @@ def output_data():
     if not os.path.exists(dir):
         os.makedirs(dir)
 
-    file = f"{dir}/"
-    file += f"P{SET['POP_SIZE']}_M{int(SET['MUT_RATE']*100)}_G{SET['MAX_GEN']}"
-    file += ".csv"
+    file = f"{dir}/data_collection.csv"
 
     # Create the file if it does not exist
     if not os.path.isfile(file):
         with open(file, "w") as f:
+            f.write("Population Size,")
+            f.write("Mutation Rate,")
+            f.write("Max Generations,")
             f.write("Mutations,")
             f.write("Split Points,")
             f.write("Average Fitness,")
             f.write("Best Fitness,")
             f.write("Generations,")
             f.write("Solution,")
+            f.write("Delta Time,")
             f.write("\n")
 
     # Compile data into a string
-    data = f"{DATA['MUTATIONS_COUNT']},"
+    data = f"{SET['POP_SIZE']},"
+    data += f"{int(SET['MUT_RATE']*100)}%,"
+    data += f"{SET['MAX_GEN']},"
+    data += f"{DATA['MUTATIONS_COUNT']},"
 
     split_points = ""
     for i in range(N_QUEENS):
@@ -434,13 +447,17 @@ def output_data():
     data += f"{DATA['GENERATIONS']},"
 
     if DATA['SOLUTION'] is None:
-        data += "No Solution\n"
+        data += "No Solution,"
     elif DATA['SOLUTION'] is not None:
         soln = ""
         for i in range(N_QUEENS):
             soln += f"{DATA['SOLUTION'].soln[i]} "
-        data += f"{soln}\n"
+        data += f"{soln},"
 
+    # Get delta time in seconds
+    data += f"{DATA['DELTATIME']},"
+
+    data += "\n"
     with open(file, "a") as f:
         f.write(data)
     return
