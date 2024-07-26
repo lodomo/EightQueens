@@ -12,6 +12,7 @@
 import getopt
 import sys
 import os
+from datetime import datetime
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -37,13 +38,12 @@ DATA['MUTATIONS_COUNT'] = 0
 DATA['SPLIT_POINTS'] = np.zeros(8, dtype=int)
 DATA['AVG_FITNESS'] = []
 DATA['BEST_FITNESS'] = []
-DATA['GENERATIONS'] = None
-DATA['SOLUTION'] = None
+DATA['GENERATIONS'] = 0
+DATA['SOLUTION'] = None 
 
 
 def main(argv):
     process_options(argv)
-    print(f"{SET['VERBOSE']}")
     verbose(f"Population Size: {SET['POP_SIZE']}")
     verbose(f"Mutation Rate: {SET['MUT_RATE']}")
     verbose(f"Max Generations: {SET['MAX_GEN']}")
@@ -85,14 +85,10 @@ def main(argv):
     if best_fitness == MAX_FITNESS:
         DATA['GENERATIONS'] = cur_gen
         DATA['SOLUTION'] = population[0]
-
-        print("Solution Found")
-        print(f"Solved in {cur_gen} generations")
-        print(population[0])
+        print(f"Solution: {population[0]} found in {cur_gen} generations")
     else:
+        DATA['GENERATIONS'] = max_gen
         print("No Solution Found")
-        print(f"Best Fitness: {best_fitness}")
-        print(population[0])
 
     plot_data()
     output_data()
@@ -104,9 +100,6 @@ def process_options(argv):
 
     try:
         opts, args = getopt.getopt(argv[1:], OPTIONS)
-        print(f"Current Line: {sys._getframe().f_lineno}")
-        print(f"opts: {opts}")
-        print(f"args: {args}")
     except getopt.GetoptError:
         print("Invalid arguments")
         sys.exit(2)
@@ -342,11 +335,15 @@ def plot_data():
     if not SET['PLOT']:
         return
 
+    verbose("Plotting Data", 1)
+
     dir = "./Plots"
+    dir += f"/{SET['POP_SIZE']}_{int(SET['MUT_RATE']*100)}_{SET['MAX_GEN']}"
 
     # Check if the directory exists
     if not os.path.exists(dir):
         os.makedirs(dir)
+
 
     # Create a plot of generation vs average fitness
     # Plot the line in red
@@ -355,39 +352,35 @@ def plot_data():
     plt.ylabel("Average Fitness")
     plt.title("Generation vs Average Fitness")
 
-    # Make the x axis integers
-    # Make the steps 1 if the generation is less than 20
-    # Make the steps 2 if the generation is less than 50
-    # Make the steps 5 if the generation is less than 100
-    # Make the steps 10 if the generation is less than 200
-    steps = 0
-    if DATA['GENERATIONS'] < 20:
-        steps = 1
-    elif DATA['GENERATIONS'] < 50:
-        steps = 2
-    elif DATA['GENERATIONS'] < 100:
-        steps = 5
-    elif DATA['GENERATIONS'] < 200:
-        steps = 10
-    else:
-        steps = 20
-    
-    plt.xticks(np.arange(0, len(DATA['AVG_FITNESS']), step=steps))
-    # Make the y axis from 0 to 28
-    plt.yticks(np.arange(0, 29, step=1))
-
     # On top of the previous plot, plot the best fitness
     # Plot the line in blue
     plt.plot(DATA['BEST_FITNESS'], 'b-')
-    plt.xlabel("Generation")
+    plt.xlabel(f"Generations {DATA['GENERATIONS']}")
     plt.ylabel("Fitness")
-    plt.title("Generation vs Fitness")
+    title = "Generation vs Fitness\n"
+    title += f"Pop: {SET['POP_SIZE']} "
+    title += f"MRate: {int(SET['MUT_RATE']*100)}% "
+    title += f"MaxGen: {SET['MAX_GEN']} "
+
+    if DATA['SOLUTION'] is not None:
+        title += "Solution: "
+        for i in range(N_QUEENS):
+            title += f"{DATA['SOLUTION'].soln[i]}"
+    elif DATA['SOLUTION'] is None:
+        title += "No Soln Found"
+    plt.title(title)
+    plt.legend(["Average Fitness", "Best Fitness"])
+
 
     # Save the plot to a file
     # fitness_POPSIZE_MUTRATE_MAXGEN_ENDGEN.png
     name = f"{dir}/"
-    name += f"{SET['POP_SIZE']}_{int(SET['MUT_RATE']*100)}_{SET['MAX_GEN']}"
-    name += f"_{DATA['GENERATIONS']}"
+    name += f"P{SET['POP_SIZE']}_M{int(SET['MUT_RATE']*100)}_G{SET['MAX_GEN']}"
+    name += f"_F{DATA['GENERATIONS']}"
+
+    now = datetime.now()
+    name += f"_{now.strftime('%Y%m%d%H%M%S')}"
+
     name += ".png"
     plt.savefig(name)
     return
@@ -397,6 +390,8 @@ def output_data():
     if not SET['DATA_OUTPUT']:
         return
 
+    verbose("Outputting Data", 1)
+
     dir = "./Data"
 
     # Check if the directory exists
@@ -404,7 +399,7 @@ def output_data():
         os.makedirs(dir)
 
     file = f"{dir}/"
-    file += f"{SET['POP_SIZE']}_{int(SET['MUT_RATE']*100)}_{SET['MAX_GEN']}"
+    file += f"P{SET['POP_SIZE']}_M{int(SET['MUT_RATE']*100)}_G{SET['MAX_GEN']}"
     file += ".csv"
 
     # Create the file if it does not exist
@@ -425,23 +420,26 @@ def output_data():
     for i in range(N_QUEENS):
         split_points += f"{DATA['SPLIT_POINTS'][i]} "
 
-    data += f"{split_points}, "
+    data += f"{split_points},"
 
     avg_fitness = ""
     for i in range(len(DATA['AVG_FITNESS'])):
         avg_fitness += f"{DATA['AVG_FITNESS'][i]} "
-    data += f"{avg_fitness}, "
+    data += f"{avg_fitness},"
 
     best_fitness = ""
     for i in range(len(DATA['BEST_FITNESS'])):
         best_fitness += f"{DATA['BEST_FITNESS'][i]} "
-    data += f"{best_fitness}, "
-    data += f"{DATA['GENERATIONS']}, "
+    data += f"{best_fitness},"
+    data += f"{DATA['GENERATIONS']},"
 
-    soln = ""
-    for i in range(N_QUEENS):
-        soln += f"{DATA['SOLUTION'].soln[i]} "
-    data += f"{soln}\n"
+    if DATA['SOLUTION'] is None:
+        data += "No Solution\n"
+    elif DATA['SOLUTION'] is not None:
+        soln = ""
+        for i in range(N_QUEENS):
+            soln += f"{DATA['SOLUTION'].soln[i]} "
+        data += f"{soln}\n"
 
     with open(file, "a") as f:
         f.write(data)
