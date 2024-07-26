@@ -11,8 +11,10 @@
 
 import getopt
 import sys
+import os
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 # Global Constants
 N_QUEENS = 8
@@ -27,6 +29,7 @@ SET['MUT_RATE'] = 0.10
 SET['MAX_GEN'] = 1000
 SET['VERBOSE'] = 0
 SET['PLOT'] = False
+SET['DATA_OUTPUT'] = False
 
 # Data Collection
 DATA = {}
@@ -80,18 +83,24 @@ def main(argv):
 
     # Check if we found a solution
     if best_fitness == MAX_FITNESS:
-        solution = population[0]
+        DATA['GENERATIONS'] = cur_gen
+        DATA['SOLUTION'] = population[0]
+
         print("Solution Found")
-        print(solution)
+        print(f"Solved in {cur_gen} generations")
+        print(population[0])
     else:
         print("No Solution Found")
         print(f"Best Fitness: {best_fitness}")
         print(population[0])
+
+    plot_data()
+    output_data()
     exit(0)
 
 
 def process_options(argv):
-    OPTIONS = "hvp:m:g:P"
+    OPTIONS = "hvp:m:g:PD"
 
     try:
         opts, args = getopt.getopt(argv[1:], OPTIONS)
@@ -121,6 +130,8 @@ def process_options(argv):
             SET['MAX_GEN'] = int(arg)
         elif opt == "-P":
             SET['PLOT'] = True
+        elif opt == "-D":
+            SET['DATA_OUTPUT'] = True
         elif opt == "-v":
             SET['VERBOSE'] += 1
             verbose("Verbose Mode Enabled")
@@ -324,6 +335,116 @@ class Queens:
 def verbose(message, level=1):
     if SET['VERBOSE'] >= level:
         print(message)
+    return
+
+
+def plot_data():
+    if not SET['PLOT']:
+        return
+
+    dir = "./Plots"
+
+    # Check if the directory exists
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+
+    # Create a plot of generation vs average fitness
+    # Plot the line in red
+    plt.plot(DATA['AVG_FITNESS'], 'r-')
+    plt.xlabel("Generation")
+    plt.ylabel("Average Fitness")
+    plt.title("Generation vs Average Fitness")
+
+    # Make the x axis integers
+    # Make the steps 1 if the generation is less than 20
+    # Make the steps 2 if the generation is less than 50
+    # Make the steps 5 if the generation is less than 100
+    # Make the steps 10 if the generation is less than 200
+    steps = 0
+    if DATA['GENERATIONS'] < 20:
+        steps = 1
+    elif DATA['GENERATIONS'] < 50:
+        steps = 2
+    elif DATA['GENERATIONS'] < 100:
+        steps = 5
+    elif DATA['GENERATIONS'] < 200:
+        steps = 10
+    else:
+        steps = 20
+    
+    plt.xticks(np.arange(0, len(DATA['AVG_FITNESS']), step=steps))
+    # Make the y axis from 0 to 28
+    plt.yticks(np.arange(0, 29, step=1))
+
+    # On top of the previous plot, plot the best fitness
+    # Plot the line in blue
+    plt.plot(DATA['BEST_FITNESS'], 'b-')
+    plt.xlabel("Generation")
+    plt.ylabel("Fitness")
+    plt.title("Generation vs Fitness")
+
+    # Save the plot to a file
+    # fitness_POPSIZE_MUTRATE_MAXGEN_ENDGEN.png
+    name = f"{dir}/"
+    name += f"{SET['POP_SIZE']}_{int(SET['MUT_RATE']*100)}_{SET['MAX_GEN']}"
+    name += f"_{DATA['GENERATIONS']}"
+    name += ".png"
+    plt.savefig(name)
+    return
+
+
+def output_data():
+    if not SET['DATA_OUTPUT']:
+        return
+
+    dir = "./Data"
+
+    # Check if the directory exists
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+
+    file = f"{dir}/"
+    file += f"{SET['POP_SIZE']}_{int(SET['MUT_RATE']*100)}_{SET['MAX_GEN']}"
+    file += ".csv"
+
+    # Create the file if it does not exist
+    if not os.path.isfile(file):
+        with open(file, "w") as f:
+            f.write("Mutations,")
+            f.write("Split Points,")
+            f.write("Average Fitness,")
+            f.write("Best Fitness,")
+            f.write("Generations,")
+            f.write("Solution,")
+            f.write("\n")
+
+    # Compile data into a string
+    data = f"{DATA['MUTATIONS_COUNT']},"
+
+    split_points = ""
+    for i in range(N_QUEENS):
+        split_points += f"{DATA['SPLIT_POINTS'][i]} "
+
+    data += f"{split_points}, "
+
+    avg_fitness = ""
+    for i in range(len(DATA['AVG_FITNESS'])):
+        avg_fitness += f"{DATA['AVG_FITNESS'][i]} "
+    data += f"{avg_fitness}, "
+
+    best_fitness = ""
+    for i in range(len(DATA['BEST_FITNESS'])):
+        best_fitness += f"{DATA['BEST_FITNESS'][i]} "
+    data += f"{best_fitness}, "
+    data += f"{DATA['GENERATIONS']}, "
+
+    soln = ""
+    for i in range(N_QUEENS):
+        soln += f"{DATA['SOLUTION'].soln[i]} "
+    data += f"{soln}\n"
+
+    with open(file, "a") as f:
+        f.write(data)
     return
 
 
