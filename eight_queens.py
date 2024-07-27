@@ -345,11 +345,11 @@ class Queens:
             self.soln[self.mut_position] = np.random.randint(0, ROWS)
             DATA['MUTATIONS_COUNT'] += 1
             verbose(f"Mutation at position {self.mut_position}", 2)
+            # Recalculate the fitness of the queen
+            # This is why I kept getting false solutions.
+            # The queen was actually a solve, but mutated.
+            self.fitness = self.calc_fitness()
 
-        # Recalculate the fitness of the queen
-        # This is why I kept getting false solutions.
-        # The queen was actually a solve, but mutated.
-        self.fitness = self.calc_fitness()
         return
 
 
