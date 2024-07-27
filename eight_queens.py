@@ -42,6 +42,8 @@ DATA['BEST_FITNESS'] = []
 DATA['GENERATIONS'] = 0
 DATA['SOLUTION'] = None
 DATA['DELTATIME'] = 0
+DATA['FAMILY_TREE'] = []
+DATA['PARENTS'] = {}
 
 
 def main(argv):
@@ -82,6 +84,8 @@ def main(argv):
         if best_fitness == MAX_FITNESS:
             break
         cur_gen += 1
+        if SET['FAMILY_TREE']:
+            DATA['FAMILY_TREE'].append(population)
 
     # Check if we found a solution
     if best_fitness == MAX_FITNESS:
@@ -98,11 +102,12 @@ def main(argv):
     DATA['DELTATIME'] = delta_time
     plot_data()
     output_data()
+    visualize_generations()
     exit(0)
 
 
 def process_options(argv):
-    OPTIONS = "hvp:m:g:PD"
+    OPTIONS = "hvp:m:g:PDF"
 
     try:
         opts, args = getopt.getopt(argv[1:], OPTIONS)
@@ -131,6 +136,8 @@ def process_options(argv):
             SET['PLOT'] = True
         elif opt == "-D":
             SET['DATA_OUTPUT'] = True
+        elif opt == "-F":
+            SET['FAMILY_TREE'] = True
         elif opt == "-v":
             SET['VERBOSE'] += 1
             verbose("Verbose Mode Enabled")
@@ -166,6 +173,7 @@ def init_population():
     population = np.empty(SET["POP_SIZE"], dtype=Queens)
     for i in range(SET["POP_SIZE"]):
         population[i] = Queens(soln=gen_random())
+
     return population
 
 
@@ -221,6 +229,8 @@ def select_parent(population):
     # Find the first queen that has a probability greater than x
     for queen in population:
         if queen.probability > x:
+            if SET['FAMILY_TREE']:
+                DATA['PARENTS'][lazy_hash(queen)] = True
             return queen
         x -= queen.probability
 
@@ -310,8 +320,13 @@ class Queens:
         for i in range(N_QUEENS):
             for j in range(i + 1, N_QUEENS):
                 if self.soln[i] == self.soln[j]:
+                    # If two queens are in the same row
                     fitness -= 1
                 elif self.soln[i] == self.soln[j] + (j - i):
+                    # If two queens are in the same diagonal up
+                    fitness -= 1
+                elif self.soln[i] == self.soln[j] - (j - i):
+                    # If two queens are in the same diagonal down
                     fitness -= 1
         return fitness
 
@@ -461,6 +476,86 @@ def output_data():
     with open(file, "a") as f:
         f.write(data)
     return
+
+
+def visualize_queens(queen, soln=False):
+    # Create an image of the board that is 8x8
+    # Checker it 225,225,225 and 222,222,222
+    checker1 = [255, 255, 255]
+    checker2 = [222, 222, 222]
+    parent_color = [0, 0, 255]
+    single_color = [255, 0, 0]
+    soln_color = [0, 255, 0]
+    queen_color = None
+
+    if soln:
+        queen_color = soln_color
+    elif lazy_hash(queen) in DATA['PARENTS']:
+        # Check parents dict for queen hash
+        queen_color = parent_color
+    else:
+        queen_color = single_color
+
+    img = np.zeros((ROWS, COLUMNS, 3), dtype=np.uint8)
+    for i in range(ROWS):
+        for j in range(COLUMNS):
+            if (i + j) % 2 == 0:
+                img[i][j] = checker1
+            else:
+                img[i][j] = checker2
+
+    # Place the queens on the board
+    for i in range(N_QUEENS):
+        img[queen.soln[i]][i] = queen_color
+    return img
+
+
+def visualize_generations():
+    if not SET['FAMILY_TREE']:
+        return
+
+    # Create an image that is 8x8 for each generation with a 1 pixel border
+    pad = 1
+    img = np.zeros((len(DATA['FAMILY_TREE']) * (ROWS + pad), SET['POP_SIZE'] * (COLUMNS + pad), 3), dtype=np.uint8)
+
+    for i in range(len(DATA['FAMILY_TREE'])):
+        for j in range(SET['POP_SIZE']):
+            queen = DATA['FAMILY_TREE'][i][j]
+            vis = visualize_queens(queen)
+            img[i*(ROWS+pad):i*(ROWS+pad)+ROWS, j*(COLUMNS+pad):j*(COLUMNS+pad)+COLUMNS] = vis
+
+    # Create a directory called "Family_Tree" if it does not exist
+    dir = "./Family_Tree"
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+
+    # Save the image to a file
+    now = datetime.now()
+    now = now.strftime("%Y%m%d%H%M%S")
+    name = f"{dir}/Family_Tree_{now}.png"
+    # Scale the image 10x
+    img = np.repeat(np.repeat(img, 10, axis=0), 10, axis=1)
+    plt.imsave(name, img)
+
+    # Also save the image of the solution
+    if DATA['SOLUTION'] is not None:
+        img = visualize_queens(DATA['SOLUTION'], soln=True)
+        name = f"{dir}/Solution_{now}.png"
+        # Scale the image 20x
+        img = np.repeat(np.repeat(img, 20, axis=0), 20, axis=1)
+        plt.imsave(name, img)
+    return
+
+ 
+def lazy_hash(queen):
+    # Create a hash of the queen based on the solution
+    # This is a lazy hash because it is not unique
+    # It is used to check if a queen is in a list
+    # It is not used for anything else
+    hash = ""
+    for i in range(N_QUEENS):
+        hash += str(queen.soln[i])
+    return hash
 
 
 if __name__ == "__main__":
