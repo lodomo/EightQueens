@@ -4,7 +4,7 @@
 # Run 36 Experiments, 100 times, with the eight_queens.py program
 
 PROGRAM="eight_queens.py"
-POPULATIONS=(10 100 250 500 1000 10000)
+POPULATIONS=(100 250 500 1000 10000)
 MUTATION_RATES=(1 10 25 50 75 100)
 MAX_GEN=(1000)
 RUNS=100
