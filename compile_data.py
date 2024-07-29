@@ -1,5 +1,7 @@
-import matplotlib.pyplot as plt
 from datetime import datetime
+
+import matplotlib.pyplot as plt
+
 
 def main():
     # Open a file called ./Data/data_collection.csv
@@ -51,29 +53,57 @@ def main():
     for key in DATA:
         DATA[key].calc_averages()
 
-    # Create a bar chart for each data set
-    # Create 36 plots, one for each population/mutation rate combination
-    # Each plot will have 4 bars, one for average generations, mutations, solutions found, and time
-    # Save the plot as plot.png
-    fig, axs = plt.subplots(6, 6, figsize=(20, 20))
-    fig.suptitle("Genetic Algorithm Data")
-    fig.tight_layout(pad=3.0)
+    # Create the bar plot with adjusted bar width and spacing
+    fig, ax = plt.subplots(figsize=(30, 15))
 
-    for i in range(6):
-        for j in range(6):
-            try:
-                key = (POPULATIONS[i], MUTATION_RATES[j])
-                cur_data = DATA[key]
-            except KeyError:
-                print(f"Key {POPULATIONS[i]}, {MUTATION_RATES[j]} not found")
-                exit(1)
+    # Add title big font
+    plt.title("Pop/Mut Rate vs. Solutions Found in 1000 Generations", fontsize=40)
 
-            axs[i, j].bar(["Gens", "Solns", "Time"],
-                          [cur_data.avg_generations, cur_data.solutions_found, cur_data.avg_time])
-            axs[i, j].set_title(f"Population: {POPULATIONS[i]}, Mutation Rate: {MUTATION_RATES[j]}")
+    keys = list(DATA.keys())
+    solutions_found = [DATA[key].solutions_found for key in keys]
+    labels = [f"{key[0]}/{key[1]}" for key in keys]
 
+    bar_width = 0.75
+    bars = ax.bar(labels, solutions_found, width=bar_width)
+
+    # Add bar labels
+    ax.bar_label(bars, fmt="%.2f")
+
+    # Set labels
+    ax.set_ylabel("Number of Solutions Found In 1000 Generations", fontsize=20)
+    ax.set_xlabel("Population/Mutation Rate", fontsize=20)
+
+    # Adjust x-axis labels to avoid overlap
+    plt.xticks(rotation=45, ha="right", fontsize=15)
+
+    # Save the plot with a timestamp in the filename
     now = datetime.now()
-    plt.savefig(f"./Plots/plot_{now.strftime('%Y%m%d%H%M%S')}.png")
+    plt.savefig(f"./Plots/plot_popmut_solutions{now.strftime('%Y%m%d%H%M%S')}.png")
+
+    # Create a bar graph for each population/mutation combination.
+    # X-axis is the population/mutation combination
+    # Y-axis is average number of generations
+    plt.clf()
+    fig, ax = plt.subplots(figsize=(30, 15))
+
+    plt.title("Pop/Mut Rate vs. Average Number of Generations Per Solution Found", fontsize=40)
+
+    generations = [DATA[key].avg_generations for key in keys]
+    bars = ax.bar(labels, generations, width=bar_width)
+
+    # Add bar labels
+    ax.bar_label(bars, fmt="%.2f", fontsize=15)
+
+    # Set labels
+    ax.set_ylabel("Average Number of Generations", fontsize=20)
+    ax.set_xlabel("Population/Mutation Rate", fontsize=20)
+
+    # Adjust x-axis labels to avoid overlap
+    plt.xticks(rotation=45, ha="right")
+
+    # Save the plot with a timestamp in the filename
+    now = datetime.now()
+    plt.savefig(f"./Plots/plot_popmut_generations{now.strftime('%Y%m%d%H%M%S')}.png")
     exit(0)
 
 
